@@ -1,0 +1,89 @@
+---
+title: "Practical Machine Learning - Course Project 1"
+author: "Saiteja"
+date: "September 27, 2015"
+output: html_document
+---
+The goal of this project is to create a machine-learning algorithm that can correctly identify the quality of barbell bicep curls by using data from belt, forearm, arm, and dumbbell monitors. 
+
+##Loading the Data
+
+The data is read and is cleaned to be devoid of missing values and irrelevant data coloumns. A pseudo-random number generator set at 987 was used to ensure reproducibility. Libraries like caret, randomForest and rpart are used to anlayse the data.
+
+The desired variable classe is a factor variable of 5 levels :
+- exactly according to the specification (Class A)
+- throwing the elbows to the front (Class B)
+- lifting the dumbbell only halfway (Class C)
+- lowering the dumbbell only halfway (Class D)
+- throwing the hips to the front (Class E)
+
+Selection of models is based on maximum accuracy and minimum  out-of-sample error. Two models decision tree and random forest algorithms are tested. 
+Cross Validation is performed by sub-setting the training data set. These two sets are tested with the models and the final prediction model is used for the test data set.
+
+
+```{r data loading}
+library(caret,  quietly=TRUE)
+library(randomForest,  quietly=TRUE)
+library(ggplot2, quietly = TRUE)
+library(rpart,  quietly=TRUE)
+library(rpart.plot,  quietly=TRUE)
+
+
+
+set.seed(987)
+setwd("~/Coursera/practical machine learning/course proj 1")
+training <- read.csv("pml-training.csv", na.strings=c("NA","#DIV/0!",""))
+testing <- read.csv("pml-testing.csv", na.strings=c("NA","#DIV/0!",""))
+
+#deleting columns with NA
+training<-training[,colSums(is.na(training)) == 0]
+testing <-testing[,colSums(is.na(testing)) == 0]
+
+## removing irrelevant coloumns like stamp
+
+training   <-training[,-c(1:7)]
+testing <-testing[,-c(1:7)]
+dim(training)
+dim(testing)
+head(training, n=5)
+head(testing, n =5)
+```
+
+## Creating Partions of the train data set
+```{r}
+inTrain <- createDataPartition(y=training$classe, p=0.75, list=FALSE)
+training_part <- training[inTrain, ]
+testing_part <- training[-inTrain, ]
+dim(training_part); dim(testing_part)
+
+```
+
+## Data Visualisation
+The plot shows the classe variable having 5 different levels and it can be observed that A is the most frequent.
+```{r}
+g <- ggplot(data = training_part, aes(classe))
+g <- g + geom_histogram()
+g
+```
+
+## Prediction Model -1 (Decision Tree)
+```{r}
+model1 <- rpart(data = training_part, classe ~ ., method = "class")
+prediction1 <- predict(model1, testing_part, type = "class")
+rpart.plot(model1, main="Classification Tree", extra=102, under=TRUE, faclen=0)
+```
+
+```{r}
+
+confusionMatrix(prediction1, testing_part$classe)
+```
+
+## Prediction Model -2 (random Forest)
+```{r}
+model2 <- randomForest(classe ~. , data=training_part, method="class")
+prediction2 <- predict(model2, testing_part, type = "class")
+confusionMatrix(prediction2, testing_part$classe)
+
+```
+
+Since the accuracy for random Forest model is greater, we select the prediction model 2.
